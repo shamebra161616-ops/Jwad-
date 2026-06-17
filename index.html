@@ -1,5 +1,225 @@
-<h1>تطبيق جواد لإدارة الفواتير</h1>
-<button>إضافة فاتورة</button>
-<button>الزبائن</button>
-<button>الديون</button>
-<button>التقارير</button>
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jwad ERP</title>
+<style>
+body{margin:0;font-family:Arial;background:#111;color:#fff}
+header{background:#1f1f1f;padding:18px;text-align:center;border-bottom:2px solid #d4af37}
+header h1{margin:0;color:#d4af37}
+nav{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px;background:#222;position:sticky;top:0}
+nav button,.btn{background:#d4af37;color:#111;border:0;border-radius:10px;padding:12px;font-weight:bold}
+section{display:none;padding:15px}
+section.active{display:block}
+.card{background:#1c1c1c;margin:10px 0;padding:15px;border-radius:14px;border:1px solid #333}
+input,select,textarea{width:100%;padding:12px;margin:6px 0;border-radius:10px;border:0;box-sizing:border-box}
+table{width:100%;border-collapse:collapse;background:#1c1c1c}
+td,th{border:1px solid #333;padding:8px;font-size:13px}
+.total{font-size:22px;color:#d4af37;font-weight:bold}
+.small{color:#aaa;font-size:13px}
+.danger{background:#b30000;color:#fff}
+</style>
+</head>
+<body>
+
+<header>
+<h1>معمل الجواد</h1>
+<p>نظام إدارة الفواتير والزبائن والديون</p>
+</header>
+
+<nav>
+<button onclick="show('home')">الرئيسية</button>
+<button onclick="show('clients')">الزبائن</button>
+<button onclick="show('invoices')">الفواتير</button>
+<button onclick="show('expenses')">المصاريف</button>
+<button onclick="show('tasks')">المهام</button>
+<button onclick="show('reports')">التقارير</button>
+</nav>
+
+<section id="home" class="active">
+<div class="card">
+<h2>لوحة التحكم</h2>
+<p>عدد الزبائن: <span id="cCount">0</span></p>
+<p>عدد الفواتير: <span id="iCount">0</span></p>
+<p>إجمالي الفواتير: <span class="total" id="sumInvoices">0</span> $</p>
+<p>إجمالي المصاريف: <span class="total" id="sumExpenses">0</span> $</p>
+<p>الصافي: <span class="total" id="netProfit">0</span> $</p>
+</div>
+</section>
+
+<section id="clients">
+<div class="card">
+<h2>إضافة زبون</h2>
+<input id="clientName" placeholder="اسم الزبون">
+<input id="clientPhone" placeholder="رقم الهاتف / واتساب">
+<textarea id="clientNote" placeholder="ملاحظات"></textarea>
+<button class="btn" onclick="addClient()">حفظ الزبون</button>
+</div>
+<div class="card">
+<h2>قائمة الزبائن</h2>
+<div id="clientsList"></div>
+</div>
+</section>
+
+<section id="invoices">
+<div class="card">
+<h2>إضافة فاتورة</h2>
+<input id="invClient" placeholder="اسم الزبون">
+<input id="invItem" placeholder="نوع العمل / الرخام / الخدمة">
+<input id="invAmount" type="number" placeholder="المبلغ الكلي بالدولار">
+<input id="invPaid" type="number" placeholder="المدفوع">
+<select id="invStatus">
+<option>غير مدفوعة</option>
+<option>مدفوعة جزئياً</option>
+<option>مدفوعة</option>
+</select>
+<button class="btn" onclick="addInvoice()">حفظ الفاتورة</button>
+</div>
+<div class="card">
+<h2>الفواتير</h2>
+<div id="invoicesList"></div>
+</div>
+</section>
+
+<section id="expenses">
+<div class="card">
+<h2>إضافة مصروف</h2>
+<input id="expName" placeholder="نوع المصروف: رواتب، كهرباء، نقل...">
+<input id="expAmount" type="number" placeholder="المبلغ">
+<button class="btn" onclick="addExpense()">حفظ المصروف</button>
+</div>
+<div class="card">
+<h2>المصاريف</h2>
+<div id="expensesList"></div>
+</div>
+</section>
+
+<section id="tasks">
+<div class="card">
+<h2>إضافة مهمة</h2>
+<input id="taskText" placeholder="اكتب المهمة">
+<button class="btn" onclick="addTask()">حفظ المهمة</button>
+</div>
+<div class="card">
+<h2>المهام</h2>
+<div id="tasksList"></div>
+</div>
+</section>
+
+<section id="reports">
+<div class="card">
+<h2>التقارير</h2>
+<p>إجمالي الدخل: <span id="rIncome">0</span> $</p>
+<p>إجمالي المصاريف: <span id="rExpenses">0</span> $</p>
+<p>الصافي: <span id="rNet">0</span> $</p>
+<button class="btn danger" onclick="clearAll()">حذف كل البيانات</button>
+</div>
+</section>
+
+<script>
+let clients=JSON.parse(localStorage.getItem("clients")||"[]");
+let invoices=JSON.parse(localStorage.getItem("invoices")||"[]");
+let expenses=JSON.parse(localStorage.getItem("expenses")||"[]");
+let tasks=JSON.parse(localStorage.getItem("tasks")||"[]");
+
+function save(){
+localStorage.setItem("clients",JSON.stringify(clients));
+localStorage.setItem("invoices",JSON.stringify(invoices));
+localStorage.setItem("expenses",JSON.stringify(expenses));
+localStorage.setItem("tasks",JSON.stringify(tasks));
+render();
+}
+
+function show(id){
+document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+render();
+}
+
+function addClient(){
+clients.push({name:clientName.value,phone:clientPhone.value,note:clientNote.value});
+clientName.value=clientPhone.value=clientNote.value="";
+save();
+}
+
+function addInvoice(){
+let amount=Number(invAmount.value||0);
+let paid=Number(invPaid.value||0);
+invoices.push({client:invClient.value,item:invItem.value,amount,paid,status:invStatus.value,date:new Date().toLocaleDateString()});
+invClient.value=invItem.value=invAmount.value=invPaid.value="";
+save();
+}
+
+function addExpense(){
+expenses.push({name:expName.value,amount:Number(expAmount.value||0),date:new Date().toLocaleDateString()});
+expName.value=expAmount.value="";
+save();
+}
+
+function addTask(){
+tasks.push({text:taskText.value,done:false});
+taskText.value="";
+save();
+}
+
+function del(arr,i){arr.splice(i,1);save();}
+
+function render(){
+let income=invoices.reduce((a,b)=>a+Number(b.amount||0),0);
+let paid=invoices.reduce((a,b)=>a+Number(b.paid||0),0);
+let exp=expenses.reduce((a,b)=>a+Number(b.amount||0),0);
+cCount.innerText=clients.length;
+iCount.innerText=invoices.length;
+sumInvoices.innerText=income;
+sumExpenses.innerText=exp;
+netProfit.innerText=income-exp;
+rIncome.innerText=income;
+rExpenses.innerText=exp;
+rNet.innerText=income-exp;
+
+clientsList.innerHTML=clients.map((c,i)=>`
+<div class="card">
+<b>${c.name}</b><br>
+<span class="small">${c.phone}</span><br>
+<p>${c.note||""}</p>
+<button class="btn danger" onclick="del(clients,${i})">حذف</button>
+</div>`).join("");
+
+invoicesList.innerHTML=invoices.map((v,i)=>`
+<div class="card">
+<b>${v.client}</b><br>
+${v.item}<br>
+المبلغ: ${v.amount}$ | المدفوع: ${v.paid}$ | الباقي: ${v.amount-v.paid}$<br>
+الحالة: ${v.status}<br>
+<span class="small">${v.date}</span><br>
+<button class="btn danger" onclick="del(invoices,${i})">حذف</button>
+</div>`).join("");
+
+expensesList.innerHTML=expenses.map((e,i)=>`
+<div class="card">
+<b>${e.name}</b><br>
+${e.amount}$<br>
+<span class="small">${e.date}</span><br>
+<button class="btn danger" onclick="del(expenses,${i})">حذف</button>
+</div>`).join("");
+
+tasksList.innerHTML=tasks.map((t,i)=>`
+<div class="card">
+${t.text}<br>
+<button class="btn danger" onclick="del(tasks,${i})">حذف</button>
+</div>`).join("");
+}
+
+function clearAll(){
+if(confirm("أكيد بدك تحذفي كل البيانات؟")){
+clients=[];invoices=[];expenses=[];tasks=[];save();
+}
+}
+
+render();
+</script>
+
+</body>
+</html>
